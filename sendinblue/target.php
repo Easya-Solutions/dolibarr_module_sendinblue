@@ -49,7 +49,7 @@ require_once '../class/html.formmailing.class.php';
 $langs->load("mails");
 
 // Security check
-if (! $user->rights->mailing->lire || $user->societe_id > 0) accessforbidden();
+if (! $user->rights->mailing->lire || (!empty($user->societe_id) && $user->societe_id > 0)) accessforbidden();
 
 
 $mesg = '';
@@ -214,7 +214,7 @@ if ($action == 'delete')
 	}
 }
 
-if ($_POST["button_removefilter"])
+if (!empty($_POST["button_removefilter"]))
 {
 	$search_lastname='';
 	$search_firstname='';
@@ -248,6 +248,7 @@ if ($object->fetch($id) >= 0)
 	print $form->showrefnav($object,'id', $linkback);
 	print '</td></tr>';
 
+    if(empty($object->titre) && !empty($object->title)) $object->titre = $object->title;
 	print '<tr><td width="25%">'.$langs->trans("MailTitle").'</td><td colspan="3">'.$object->titre.'</td></tr>';
 
 	print '<tr><td width="25%">'.$langs->trans("MailFrom").'</td><td colspan="3">'.dol_print_email($object->email_from,0,0,0,0,1).'</td></tr>';
@@ -280,7 +281,7 @@ if ($object->fetch($id) >= 0)
 	print "</div>";
 
 	dol_htmloutput_mesg($mesg);
-
+	$var = 0;
 	$var=!$var;
 
 	$allowaddtarget=($object->statut == 0);
@@ -342,7 +343,8 @@ if ($object->fetch($id) >= 0)
 				$qualified=1;
 				foreach ($obj->require_module as $key)
 				{
-					if (! $conf->$key->enabled || (! $user->admin && $obj->require_admin))
+
+					if (empty($conf->$key->enabled) || (! $user->admin && $obj->require_admin))
 					{
 						$qualified=0;
 						//print "Les prerequis d'activation du module mailing ne sont pas respectes. Il ne sera pas actif";
@@ -414,7 +416,7 @@ if ($object->fetch($id) >= 0)
 	}
 
 	// List of selected targets
-	$sql  = "SELECT DISTINCT mc.rowid, mc.lastname,civ.label as civilite,mc.firstname, mc.email, mc.other, mc.statut
+	$sql  = "SELECT DISTINCT mc.rowid, mc.lastname,civ.label as civilite,mc.firstname, mc.email, mc.other, sendinblue_status as statut
 	,soc.nom as 'societe',socp.address
 	,socp.zip,socp.town,socp.phone,socp.phone_mobile, mc.date_envoi, mc.source_url, mc.source_id, mc.source_type";
 	$sql .= " FROM ".MAIN_DB_PREFIX."mailing_cibles as mc";
@@ -459,7 +461,7 @@ if ($object->fetch($id) >= 0)
 		print '<input type="hidden" name="sortfield" value="'.$sortfield.'">';
 		print '<input type="hidden" name="sortorder" value="'.$sortorder.'">';
 		print '<input type="hidden" name="id" value="'.$object->id.'">';
-
+		$cleartext='';
 		if ($allowaddtarget) {
 			$cleartext='<br></div><div>'.$langs->trans("ToClearAllRecipientsClickHere").': '.'<input type="submit" name="clearlist" class="button" value="'.$langs->trans("TargetsReset").'">';
 		}
@@ -627,7 +629,8 @@ if ($object->fetch($id) >= 0)
 					print '<td align="center">&nbsp;</td>';
 					print '<td align="right" class="nowrap">'.$langs->trans("MailingStatusNotSent");
 					if ($user->rights->mailing->creer && $allowaddtarget) {
-						print '<a href="'.$_SERVER['PHP_SELF'].'?action=delete&rowid='.$obj->rowid.$param.'">'.img_delete($langs->trans("RemoveRecipient"));
+						$newToken = function_exists('newToken') ? newToken() : $_SESSION['newtoken'];
+						print '<a href="'.$_SERVER['PHP_SELF'].'?action=delete&rowid='.$obj->rowid.$param.'&token='.$newToken.'">'.img_delete($langs->trans("RemoveRecipient"));
 					}
 					print '</td>';
 				}

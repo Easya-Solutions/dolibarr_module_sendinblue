@@ -49,7 +49,7 @@ $nameList = GETPOST('nameList', 'none');
 $error=0;
 
 // Access control
-if (! $user->rights->mailing->creer || (empty($conf->global->EXTERNAL_USERS_ARE_AUTHORIZED) && $user->societe_id > 0 )) {
+if (! $user->rights->mailing->creer || (empty($conf->global->EXTERNAL_USERS_ARE_AUTHORIZED) && !empty($user->societe_id) && $user->societe_id > 0 )) {
 	accessforbidden();
 }
 
@@ -100,7 +100,7 @@ if(!empty($createList) && !empty($nameList)){
 // Action update description of emailing
 if ($action == 'settitre' || $action == 'setemail_from') {
 
-	if ($action == 'settitre')					$object->titre          = trim(GETPOST('titre','alpha'));
+	if ($action == 'settitre')					$object->title = $object->titre          = trim(GETPOST('titre','alpha'));
 	else if ($action == 'setemail_from')		$object->email_from     = trim(GETPOST('email_from','alpha'));
 
 	else if ($action == 'settitre' && empty($object->titre))		$mesg.=($mesg?'<br>':'').$langs->trans("ErrorFieldRequired",$langs->transnoentities("MailTitle"));
@@ -118,6 +118,18 @@ if ($action == 'settitre' || $action == 'setemail_from') {
 	}
 
 	$action="";
+}
+
+if($action == 'setStatusToSent') {
+
+    $sql = 'UPDATE '.MAIN_DB_PREFIX.'mailing SET statut = 3 WHERE rowid = '.intval($object->id);
+    $resql = $db->query($sql);
+    if(!$resql) {
+		setEventMessage($langs->trans('setStatustoSentError'),'errors');
+		header("Location: ".$_SERVER['PHP_SELF']."?id=".$object->id);
+	} else {
+		header("Location: ".$_SERVER['PHP_SELF']."?id=".$object->id);
+	}
 }
 
 if ($action=='associateconfirm') {
@@ -341,8 +353,9 @@ if ( !empty($conf->global->SENDINBLUE_API_KEY)) {
 	print '</td></tr>';
 
 	// Description
-	print '<tr class="pair"><td>'.$form->editfieldkey("MailTitle",'titre',$object->titre,$object,$user->rights->mailing->creer && $object->statut < 3,'string').'</td><td colspan="3">';
-	print $form->editfieldval("MailTitle",'titre',$object->titre,$object,$user->rights->mailing->creer && $object->statut < 3,'string');
+    if(empty($object->titre) && !empty($object->title)) $object->titre = $object->title;
+	print '<tr class="pair"><td>'.$form->editfieldkey("MailTitle",'titre',!empty($object->titre) ? $object->titre : '',$object,$user->rights->mailing->creer && $object->statut < 3,'string').'</td><td colspan="3">';
+	print $form->editfieldval("MailTitle",'titre',!empty($object->titre) ? $object->titre : '',$object,$user->rights->mailing->creer && $object->statut < 3,'string');
 	print '</td></tr>';
 
 	// From
@@ -546,6 +559,11 @@ if ( !empty($conf->global->SENDINBLUE_API_KEY)) {
 	}
 
 	print "\n\n<div class=\"tabsAction\">\n";
+	if (!in_array($object->statut, array(0,3)) && $user->rights->mailing->creer) {
+		if ((float) DOL_VERSION < 3.7) print '<a class="butAction" href="'.$_SERVER['PHP_SELF'].'?action=setStatusToSent&amp;id='.$object->id.'">'.$langs->trans("SetStatusToSent").'</a>';
+		else print '<a class="butAction" href="'.$_SERVER['PHP_SELF'].'?action=setStatusToSent&amp;id='.$object->id.'&token='.newToken().'">'.$langs->trans("SetStatusToSent").'</a>';
+	}
+
 	if (($object->statut == 0) && $user->rights->mailing->creer) {
 		if ((float) DOL_VERSION < 3.7) print '<a class="butAction" href="'.dol_buildpath('/comm/mailing/fiche.php',1).'?action=edit&amp;id='.$object->id.'">'.$langs->trans("EditMailing").'</a>';
 		else print '<a class="butAction" href="'.dol_buildpath('/comm/mailing/card.php',1).'?action=edit&amp;id='.$object->id.'">'.$langs->trans("EditMailing").'</a>';
@@ -609,16 +627,27 @@ if ( !empty($conf->global->SENDINBLUE_API_KEY)) {
 if($object->statut == 3){
 		$PDOdb = new TPDOdb;
 		$listeview = new TListviewTBS('graphCampaignActions');
-		$TSum[] = array($langs->transnoentities('unique_views'),$sendinblue->sendinblue_webid['data'][0]['unique_views']);
-		$TSum[] = array($langs->transnoentities('viewed'),$sendinblue->sendinblue_webid['data'][0]['viewed']);
-		$TSum[] = array($langs->transnoentities('clicked'),$sendinblue->sendinblue_webid['data'][0]['clicked']);
-		$TSum[] = array($langs->transnoentities('Hard Bounce'),$sendinblue->sendinblue_webid['data'][0]['hard_bounce']);
-		$TSum[] = array($langs->transnoentities('Soft Bounce'),$sendinblue->sendinblue_webid['data'][0]['soft_bounce']);
-		$TSum[] = array($langs->transnoentities('unsub'),$sendinblue->sendinblue_webid['data'][0]['unsub']);
-		$TSum[] = array($langs->transnoentities('mirror_click'),$sendinblue->sendinblue_webid['data'][0]['mirror_click']);
-		$TSum[] = array($langs->transnoentities('complaints'),$sendinblue->sendinblue_webid['data'][0]['complaints']);
-
-		if(!empty($sendinblue->sendinblue_webid['data'][0]['delivered'])){
+        if(empty($sendinblue->sendinblue_webid['data']) && !empty($sendinblue->sendinblue_webid['statistics']['campaignStats'][0])) {
+            $TSum[] = array($langs->transnoentities('unique_views'), $sendinblue->sendinblue_webid['statistics']['campaignStats'][0]['uniqueViews']);
+			$TSum[] = array($langs->transnoentities('viewed'), $sendinblue->sendinblue_webid['statistics']['campaignStats'][0]['viewed']);
+			$TSum[] = array($langs->transnoentities('clicked'), $sendinblue->sendinblue_webid['statistics']['campaignStats'][0]['clickers']);
+			$TSum[] = array($langs->transnoentities('Hard Bounce'), $sendinblue->sendinblue_webid['statistics']['campaignStats'][0]['hardBounces']);
+			$TSum[] = array($langs->transnoentities('Soft Bounce'), $sendinblue->sendinblue_webid['statistics']['campaignStats'][0]['softBounces']);
+			$TSum[] = array($langs->transnoentities('unsub'), $sendinblue->sendinblue_webid['statistics']['campaignStats'][0]['unsubscriptions']);
+			$TSum[] = array($langs->transnoentities('complaints'), $sendinblue->sendinblue_webid['statistics']['campaignStats'][0]['complaints']);
+            $delivered = $sendinblue->sendinblue_webid['statistics']['campaignStats'][0]['delivered'];
+        } else {
+			$TSum[] = array($langs->transnoentities('unique_views'), $sendinblue->sendinblue_webid['data'][0]['unique_views']);
+			$TSum[] = array($langs->transnoentities('viewed'), $sendinblue->sendinblue_webid['data'][0]['viewed']);
+			$TSum[] = array($langs->transnoentities('clicked'), $sendinblue->sendinblue_webid['data'][0]['clicked']);
+			$TSum[] = array($langs->transnoentities('Hard Bounce'), $sendinblue->sendinblue_webid['data'][0]['hard_bounce']);
+			$TSum[] = array($langs->transnoentities('Soft Bounce'), $sendinblue->sendinblue_webid['data'][0]['soft_bounce']);
+			$TSum[] = array($langs->transnoentities('unsub'), $sendinblue->sendinblue_webid['data'][0]['unsub']);
+			$TSum[] = array($langs->transnoentities('mirror_click'), $sendinblue->sendinblue_webid['data'][0]['mirror_click']);
+			$TSum[] = array($langs->transnoentities('complaints'), $sendinblue->sendinblue_webid['data'][0]['complaints']);
+            $delivered = $sendinblue->sendinblue_webid['data'][0]['delivered'];
+		}
+		if(!empty($delivered)){
 			print $listeview->renderArray($PDOdb, $TSum
 			,array(
 			'type' => 'chart'

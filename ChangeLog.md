@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 ## UNRELEASED
 
 ## 2.4 *26/10/2021*
+- FIX : Ajout du bouton "Passer le mailing au statut envoyé complètement - *29/06/2023* - 2.4.14
+- FIX : Prise en compte du mauvais champ pour l'affichage du titre des mailings - *29/06/2023* - 2.4.13
+- FIX : Status of mailing targets were not working - *29/06/2023* - 2.4.12
+- FIX : Make menu experimentals because they don't work - *20/06/2023* - 2.4.11
+- FIX : Impossibilité de supprimer des contacts ajoutés en tant que destinataires + correction bugs - *01/06/2023* - 2.4.10
+- FIX : V17 Compat - *17/01/2023* - 2.4.9
 - FIX : V16 TOKEN - *08/06/2022* - 2.4.8
 - FIX : Gestion de l'affichage des extrafields sur une fiche sendinblue- 2.4.7 *16/06/2022*
 - FIX : Change errors management - 2.4.6 *15/04/2022*

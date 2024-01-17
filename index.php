@@ -48,7 +48,6 @@ if (empty($page) || $page == -1 || !empty($search_btn) || !empty($search_remove_
 $pageprev = $page - 1;
 $pagenext = $page + 1;
 $page = ($page >= 0 ? ($page <= 499 ? $page : 499) : 0);
-$page_limit = ($page_limit > 0 ? ($page_limit < 1000 ? $page_limit : 1000) : 1);
 
 $param='';
 if ($limit > 0 && $limit != $conf->liste_limit) $param.='&limit='.urlencode($limit);
@@ -229,7 +228,12 @@ if (is_array($sendinblue->listcampaign_lines) && count($sendinblue->listcampaign
 		if (!empty($sendinblue_dolibarr->fk_mailing)) {
 			$mailing = new Mailing($db);
 			$mailing->fetch($sendinblue_dolibarr->fk_mailing);
-			print '<a target="_blanck" href="' . dol_buildpath('/comm/mailing/card.php', 1) . '?id=' . $mailing->id . $param . $param2 . '">' . (empty($mailing->titre) ? $langs->trans('RecordDeleted') : $mailing->titre) . '</a>';
+			if(version_compare(DOL_VERSION, '13.0.0', '<')) {
+				$title = empty($mailing->titre) ? $langs->trans('RecordDeleted') : $mailing->titre;
+			} else {
+				$title = empty($mailing->title) ? $langs->trans('RecordDeleted') : $mailing->title;
+			}
+			print '<a target="_blanck" href="' . dol_buildpath('/comm/mailing/card.php', 1) . '?id=' . $mailing->id . $param . $param2 . '">' . $title . '</a>';
 		} else {
 			print '<a class="butAction" href="' . $_SERVER['PHP_SELF'] . '?action=createemailing&sendinblueid=' . $line['id'] .
 				'&campaignname=' . urlencode(!empty($line['settings']['title']) ? $line['settings']['title'] : $line['campaign_name']) . $param . $param2 . '">' .
@@ -241,7 +245,7 @@ if (is_array($sendinblue->listcampaign_lines) && count($sendinblue->listcampaign
 		if (++$idx >= $limit) break;
 	}
 }else {
-	print "<tr " . $bc[$var] . ">";
+	print "<tr>";
 	print '<td colspan="3">'.$langs->trans('NoRecords').'</td>';
 	print '</tr>';
 }
