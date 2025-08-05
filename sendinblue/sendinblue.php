@@ -219,7 +219,7 @@ if ($action=='updatesendinbluecampaignstatus_confirm' && $confirm='yes') {
 
 //Attached file are not allowed for SendinBlue Mailing
 $error_file_attach=false;
-$upload_dir = $conf->mailing->dir_output . "/" . get_exdir($object->id,2,0,1,$object,'mailing');
+$upload_dir = $conf->mailing->dir_output . "/" . get_exdir($object->id,getDolGlobalInt('MAILING_USE_NEW_PATH_FOR_FILES') ? 0 : 2,0,1,$object,'mailing');
 $listofpaths=dol_dir_list($upload_dir,'all',0,'','','name',SORT_ASC,0);
 if (count($listofpaths))
 {
